@@ -28,6 +28,7 @@ from everyday_wechat.control.airquality.air_quality_aqicn import (
 )
 from everyday_wechat.utils import config
 from everyday_wechat.utils.itchat_helper import (
+    init_alert_config,
     init_wechat_config,
     set_system_notice,
 )
@@ -75,7 +76,7 @@ def is_online(auto_login=False):
         return False
 
     # hotReload = not config.get('is_forced_switch', False)  # 切换微信号，重新扫码。
-    hotReload = False  # 2019年9月27日15:31:22 最近保存最近登录状态出错，所以先设置每次都得扫码登录
+    hotReload = True  # 2019年9月27日15:31:22 最近保存最近登录状态出错，所以先设置每次都得扫码登录
     loginCallback = init_data
     exitCallback = exit_msg
     try:
@@ -114,10 +115,11 @@ def delete_cache():
 
 def init_data():
     """ 初始化微信所需数据 """
-    set_system_notice('登录成功')
+    #set_system_notice('登录成功')
     itchat.get_friends(update=True)  # 更新好友数据。
     itchat.get_chatrooms(update=True)  # 更新群聊数据。
 
+    init_alert_config()  # 初始化所有配置内容
     init_wechat_config()  # 初始化所有配置内容
 
     # 提醒内容不为空时，启动定时任务
@@ -137,7 +139,7 @@ def init_alarm(alarm_dict):
     scheduler = BackgroundScheduler()
     for key, value in alarm_dict.items():
         scheduler.add_job(send_alarm_msg, 'cron', [key], hour=value['hour'],
-                          minute=value['minute'], id=key, misfire_grace_time=600, jitter=value.get("alarm_jitter",0))
+                          minute=value['minute'], id=key)
     scheduler.start()
 
     # print('已开启定时发送提醒功能...')

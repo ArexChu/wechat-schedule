@@ -4,3 +4,6 @@ itchat.pkl
 QR.png
 
 venv/
+
+everyday_wechat/_config.yaml
+*.swp

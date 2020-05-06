@@ -88,6 +88,17 @@ def init_wechat_config():
         helper[group_list_uuid_name] = set(group_uuid_list)
     #   end ----------------------------------- 群功能初始化 ----------------------------------- end
 
+    # 将解析的数据保存于 config 中。
+    config.update(myset)
+    # print(json.dumps(alarm_dict, ensure_ascii=False))
+    # print('初始化微信所需数据结束..')
+
+    log_all_config()
+
+def init_alert_config():
+    # 从config copy ，用于保存新的接口内容。
+    myset = config.copy()
+
     alarm = myset.get('alarm_info')
     alarm_dict = {}
     if alarm is not None and alarm.get('is_alarm'):
@@ -103,16 +114,7 @@ def init_wechat_config():
                 friends = [friends]
             if isinstance(friends, list):
                 for name in friends:
-                    if name.lower() in FILEHELPER_MARK:  # 判断是否文件传输助手
-                        uuid_list.append(FILEHELPER)
-                        nickname_list.append(name)
-                        continue
-                    name_info = get_friend(name)
-                    if not name_info:
-                        print('定时提醒中的好友昵称『{}』无效'.format(name))
-                    else:
-                        uuid_list.append(name_info['UserName'])
-                        nickname_list.append(name)
+                    nickname_list.append(name)
             # end---------------------------处理好友---------------------------end
 
             # start---------------------------群组处理---------------------------start
@@ -121,13 +123,7 @@ def init_wechat_config():
                 group_names = [group_names]
             if isinstance(group_names, list):
                 for name in group_names:
-                    name_info = get_group(name)
-                    if not name_info:
-                        print('定时任务中的群聊名称『{}』有误。'
-                              '(注意：必须要把需要的群聊保存到通讯录)'.format(name))
-                    else:
-                        uuid_list.append(name_info['UserName'])
-                        nickname_list.append(name)
+                    nickname_list.append(name)
             # end---------------------------群组处理---------------------------end
 
             # start---------------------------定时处理---------------------------start
@@ -150,10 +146,6 @@ def init_wechat_config():
     # 将解析的数据保存于 config 中。
     config.update(myset)
     # print(json.dumps(alarm_dict, ensure_ascii=False))
-    # print('初始化微信所需数据结束..')
-
-    log_all_config()
-
 
 def set_system_notice(text):
     """
