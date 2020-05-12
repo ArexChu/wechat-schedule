@@ -138,12 +138,19 @@ def init_alarm(alarm_dict):
     # 定时任务
     scheduler = BackgroundScheduler()
     for key, value in alarm_dict.items():
-        scheduler.add_job(send_alarm_msg, 'cron', [key], hour=value['hour'],
+        if 'days' in value:
+            scheduler.add_job(send_alarm_msg, 'interval', [key], days=value['days'], start_date=value['start_time'],
+                          id=key)
+        elif 'day' in value:
+            scheduler.add_job(send_alarm_msg, 'cron', [key], day=value['day'], hour=value['hour'],
+                          minute=value['minute'], id=key)
+        else:
+            scheduler.add_job(send_alarm_msg, 'cron', [key], hour=value['hour'],
                           minute=value['minute'], id=key)
     scheduler.start()
 
     # print('已开启定时发送提醒功能...')
-    # print(scheduler.get_jobs())
+    print(scheduler.get_jobs())
 
 
 def send_alarm_msg(key):

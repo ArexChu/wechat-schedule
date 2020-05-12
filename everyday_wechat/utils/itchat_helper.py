@@ -24,6 +24,8 @@ from everyday_wechat.utils.data_collection import (
 __all__ = ['init_wechat_config', 'set_system_notice', 'get_group', 'get_friend']
 
 TIME_COMPILE = re.compile(r'^\s*([01]?[0-9]|2[0-3])\s*[：:\-]\s*([0-5]?[0-9])\s*$')
+DAY_COMPILE = re.compile(r'^\s*([0-2]?[0-9]|3[01])\s*[ ]\s*([01]?[0-9]|2[0-3])\s*[：:\-]\s*([0-5]?[0-9])\s*$')
+DAYS_COMPILE = re.compile(r'^\s*([0-9]+)\s*[-]\s*([0-9]+)\s*$')
 
 
 def init_wechat_config():
@@ -103,49 +105,80 @@ def init_alert_config():
     alarm_dict = {}
     if alarm is not None and alarm.get('is_alarm'):
         for gi in alarm.get('girlfriend_infos'):
-            ats = gi.get('alarm_timed')
-            if not ats:
-                continue
-            uuid_list = []
-            nickname_list = []
-            # start---------------------------处理好友---------------------------start
-            friends = gi.get('wechat_name')
-            if isinstance(friends, str):
-                friends = [friends]
-            if isinstance(friends, list):
-                for name in friends:
-                    nickname_list.append(name)
-            # end---------------------------处理好友---------------------------end
+            ats = gi.get('alarm_time')
+            aps = gi.get('alarm_period')
+            if ats or aps:
+                uuid_list = []
+                nickname_list = []
+                # start---------------------------处理好友---------------------------start
+                friends = gi.get('wechat_name')
+                if isinstance(friends, str):
+                    friends = [friends]
+                if isinstance(friends, list):
+                    for name in friends:
+                        name_info = get_friend(name)
+                        if not name_info:
+                            print('定时提醒中的好友昵称『{}』无效'.format(name))
+                        else:
+                            uuid_list.append(name_info['UserName'])
+                            nickname_list.append(name)
+                # end---------------------------处理好友---------------------------end
 
-            # start---------------------------群组处理---------------------------start
-            group_names = gi.get('group_name')
-            if isinstance(group_names, str):
-                group_names = [group_names]
-            if isinstance(group_names, list):
-                for name in group_names:
-                    nickname_list.append(name)
-            # end---------------------------群组处理---------------------------end
+                # start---------------------------群组处理---------------------------start
+                group_names = gi.get('group_name')
+                if isinstance(group_names, str):
+                    group_names = [group_names]
+                if isinstance(group_names, list):
+                    for name in group_names:
+                        name_info = get_group(name)
+                        if not name_info:
+                            print('定时任务中的群聊名称『{}』有误。'
+                                  '(注意：必须要把需要的群聊保存到通讯录)'.format(name))
+                        else:
+                            uuid_list.append(name_info['UserName'])
+                            nickname_list.append(name)
+                # end---------------------------群组处理---------------------------end
 
-            # start---------------------------定时处理---------------------------start
+                # start---------------------------定时处理---------------------------start
 
-            if isinstance(ats, str):
-                ats = [ats]
-            if isinstance(ats, list):
-                for at in ats:
-                    times = TIME_COMPILE.findall(at)
-                    if not times:
-                        print('时间{}格式出错'.format(at))
-                        continue
-                    hour, minute = int(times[0][0]), int(times[0][1])
-                    temp_dict = {'hour': hour, 'minute': minute, 'uuid_list': uuid_list, 'nickname_list': nickname_list}
-                    temp_dict.update(gi)
-                    alarm_dict[md5_encode(str(temp_dict))] = temp_dict
-        #   end---------------------------定时处理---------------------------end
+                start_time = gi.get('start_time')
+                if isinstance(aps, str):
+                    aps = [aps]
+                if isinstance(aps, list):
+                    for at in aps:
+                        days = DAYS_COMPILE.findall(at)
+                        if days: 
+                            days1, days2 = int(days[0][0]), int(days[0][1])
+                            for x in range(days2 - days1 + 1):
+                                temp_dict = {'days': days1 + x, 'start_time': start_time, 'uuid_list': uuid_list, 'nickname_list': nickname_list}
+                                temp_dict.update(gi)
+                                alarm_dict[md5_encode(str(temp_dict))] = temp_dict
+
+                if isinstance(ats, str):
+                    ats = [ats]
+                if isinstance(ats, list):
+                    for at in ats:
+                        time = TIME_COMPILE.findall(at)
+                        day = DAY_COMPILE.findall(at)
+                        if time: 
+                            hour, minute = int(time[0][0]), int(time[0][1])
+                            temp_dict = {'hour': hour, 'minute': minute, 'uuid_list': uuid_list, 'nickname_list': nickname_list}
+                            temp_dict.update(gi)
+                            alarm_dict[md5_encode(str(temp_dict))] = temp_dict
+                        if day: 
+                            day, hour, minute = int(day[0][0]), int(day[0][1]), int(day[0][2])
+                            temp_dict = {'day': day, 'hour': hour, 'minute': minute, 'uuid_list': uuid_list, 'nickname_list': nickname_list}
+                            temp_dict.update(gi)
+                            alarm_dict[md5_encode(str(temp_dict))] = temp_dict
+                #end---------------------------定时处理---------------------------end
         alarm['alarm_dict'] = alarm_dict
+        print(alarm_dict)
 
     # 将解析的数据保存于 config 中。
     config.update(myset)
     # print(json.dumps(alarm_dict, ensure_ascii=False))
+
+    #log_alert_config()
 
 def set_system_notice(text):
     """
@@ -288,6 +321,7 @@ def log_all_config():
 
     print('=' * 80)
 
+def log_alert_config():
     # start ----------------------------------- 提醒功能的日志说明 ----------------------------------- start
     alarm = config.get('alarm_info')
     if not alarm or not alarm.get('is_alarm'):
@@ -298,7 +332,7 @@ def log_all_config():
         for value in alarm_dict.values():
             nickname_list = value.get('nickname_list')
             nns = '，'.join(nickname_list)
-            # temp_dict = {'hour': hour, 'minute': minute, 'uuid_list': uuid_list, 'nickname_list': nickname_list}
+            # temp_dict = {'hour': hour, 'minute': minute, 'nickname_list': nickname_list}
             hour = value.get('hour')
             minute = value.get('minute')
             alarm_time = "{hour:0>2d}:{minute:0>2d}".format(hour=hour, minute=minute)
