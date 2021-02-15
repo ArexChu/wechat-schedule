@@ -20,12 +20,17 @@ from everyday_wechat.utils.common import (
 from everyday_wechat.utils.data_collection import (
     BOT_NAME_DICT
 )
+from borax.calendars.lunardate import LunarDate
 
 __all__ = ['init_wechat_config', 'set_system_notice', 'get_group', 'get_friend']
 
-TIME_COMPILE = re.compile(r'^\s*([01]?[0-9]|2[0-3])\s*[：:\-]\s*([0-5]?[0-9])\s*$')
-DAY_COMPILE = re.compile(r'^\s*([0-2]?[0-9]|3[01])\s*[ ]\s*([01]?[0-9]|2[0-3])\s*[：:\-]\s*([0-5]?[0-9])\s*$')
-DAYS_COMPILE = re.compile(r'^\s*([0-9]+)\s*[-]\s*([0-9]+)\s*$')
+TIME_COMPILE = re.compile(r'^\s*([01]?[0-9]|2[0-3])\s*[:]\s*([0-5]?[0-9])\s*$')
+DAYTIME_COMPILE = re.compile(r'^\s*([0-2]?[0-9]|3[01])\s*[ ]\s*([01]?[0-9]|2[0-3])\s*[:]\s*([0-5]?[0-9])\s*$')
+DAY_STRING_COMPILE = re.compile(r'^\s*([0-5][a-z][a-z][ ]?[a-z]?[a-z]?[a-z]?)\s*[ ]\s*([01]?[0-9]|2[0-3])\s*[:]\s*([0-5]?[0-9])\s*$')
+DAY_OF_WEEK_COMPILE = re.compile(r'^\s*([a-z][a-z][a-z][-]?[a-z]?[a-z]?[a-z]?)\s*[ ]\s*([01]?[0-9]|2[0-3])\s*[:]\s*([0-5]?[0-9])\s*$')
+DATETIME_COMPILE = re.compile(r'^\s*([0]?[0-9]|1[0-2])\s*[-]\s*([0-2]?[0-9]|3[01])\s*[ ]\s*([01]?[0-9]|2[0-3])\s*[:]\s*([0-5]?[0-9])\s*$')
+#YEARDATETIME_COMPILE = re.compile(r'^\s*([0-9]+)\s*[-]\s*([0]?[0-9]|1[0-2])\s*[-]\s*([0-2]?[0-9]|3[01])\s*[ ]\s*([01]?[0-9]|2[0-3])\s*[:]\s*([0-5]?[0-9])\s*[:]\s*([0-5]?[0-9])\s*$')
+PERIOD_COMPILE = re.compile(r'^\s*([0-9]+)\s*$')
 
 
 def init_wechat_config():
@@ -107,6 +112,7 @@ def init_alert_config():
         for gi in alarm.get('girlfriend_infos'):
             ats = gi.get('alarm_time')
             aps = gi.get('alarm_period')
+            sts = gi.get('start_time')
             if ats or aps:
                 uuid_list = []
                 nickname_list = []
@@ -141,25 +147,30 @@ def init_alert_config():
 
                 # start---------------------------定时处理---------------------------start
 
-                start_time = gi.get('start_time')
                 if isinstance(aps, str):
                     aps = [aps]
+                if isinstance(sts, str):
+                    sts = [sts]
                 if isinstance(aps, list):
-                    for at in aps:
-                        days = DAYS_COMPILE.findall(at)
-                        if days: 
-                            days1, days2 = int(days[0][0]), int(days[0][1])
-                            for x in range(days2 - days1 + 1):
-                                temp_dict = {'days': days1 + x, 'start_time': start_time, 'uuid_list': uuid_list, 'nickname_list': nickname_list}
+                    for ap in aps:
+                        days = PERIOD_COMPILE.findall(ap)
+                        days = int(days[0])
+                        if isinstance(sts, list):
+                            for st in sts:
+                                temp_dict = {'days': days, 'start_date': st, 'uuid_list': uuid_list, 'nickname_list': nickname_list}
                                 temp_dict.update(gi)
                                 alarm_dict[md5_encode(str(temp_dict))] = temp_dict
 
+                lunar_date = gi.get('lunar_date')
                 if isinstance(ats, str):
                     ats = [ats]
                 if isinstance(ats, list):
                     for at in ats:
                         time = TIME_COMPILE.findall(at)
-                        day = DAY_COMPILE.findall(at)
+                        day = DAYTIME_COMPILE.findall(at)
+                        day_string = DAY_STRING_COMPILE.findall(at)
+                        day_of_week = DAY_OF_WEEK_COMPILE.findall(at)
+                        date = DATETIME_COMPILE.findall(at)
                         if time: 
                             hour, minute = int(time[0][0]), int(time[0][1])
                             temp_dict = {'hour': hour, 'minute': minute, 'uuid_list': uuid_list, 'nickname_list': nickname_list}
@@ -168,6 +179,27 @@ def init_alert_config():
                         if day: 
                             day, hour, minute = int(day[0][0]), int(day[0][1]), int(day[0][2])
                             temp_dict = {'day': day, 'hour': hour, 'minute': minute, 'uuid_list': uuid_list, 'nickname_list': nickname_list}
+                            temp_dict.update(gi)
+                            alarm_dict[md5_encode(str(temp_dict))] = temp_dict
+                        if day_string:
+                            day, hour, minute = day_string[0][0], int(day_string[0][1]), int(day_string[0][2])
+                            temp_dict = {'day': day, 'hour': hour, 'minute': minute, 'uuid_list': uuid_list, 'nickname_list': nickname_list}
+                            temp_dict.update(gi)
+                            alarm_dict[md5_encode(str(temp_dict))] = temp_dict
+                        if day_of_week:
+                            day_of_week, hour, minute = day_of_week[0][0], int(day_of_week[0][1]), int(day_of_week[0][2])
+                            temp_dict = {'day_of_week': day_of_week, 'hour': hour, 'minute': minute, 'uuid_list': uuid_list, 'nickname_list': nickname_list}
+                            temp_dict.update(gi)
+                            alarm_dict[md5_encode(str(temp_dict))] = temp_dict
+                        if date: 
+                            if lunar_date:
+                                year = LunarDate.today().year
+                                month, day = int(date[0][0]), int(date[0][1])
+                                lunar_date = (LunarDate(year, month, day).to_solar_date())
+                                month, day, hour, minute = lunar_date.month, lunar_date.day, int(date[0][2]), int(date[0][3])
+                            else:
+                                month, day, hour, minute = int(date[0][0]), int(date[0][1]), int(date[0][2]), int(date[0][3])
+                            temp_dict = {'month': month, 'day': day, 'hour': hour, 'minute': minute, 'uuid_list': uuid_list, 'nickname_list': nickname_list}
                             temp_dict.update(gi)
                             alarm_dict[md5_encode(str(temp_dict))] = temp_dict
                 #end---------------------------定时处理---------------------------end

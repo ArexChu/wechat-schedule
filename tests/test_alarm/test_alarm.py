@@ -24,14 +24,20 @@ class TestJobModel(BaseTestCase):
         scheduler = BlockingScheduler()
         for key, value in alarm_dict.items():
             if 'days' in value:
-                scheduler.add_job(send_alarm_msg, 'interval', [key], days=value['days'], start_date=value['start_time'],
-                              id=key, misfire_grace_time=600)
+                scheduler.add_job(send_alarm_msg, 'interval', [key], days=value['days'], start_date=value['start_date'],
+                              id=key)
+            elif 'month' in value:
+                scheduler.add_job(send_alarm_msg, 'cron', [key], month=value['month'], day=value['day'], hour=value['hour'],
+                              minute=value['minute'], id=key)
             elif 'day' in value:
                 scheduler.add_job(send_alarm_msg, 'cron', [key], day=value['day'], hour=value['hour'],
-                              minute=value['minute'], id=key, misfire_grace_time=600)
+                              minute=value['minute'], id=key)
+            elif 'day_of_week' in value:
+                scheduler.add_job(send_alarm_msg, 'cron', [key], day_of_week=value['day_of_week'], hour=value['hour'],
+                              minute=value['minute'], id=key)
             else:
                 scheduler.add_job(send_alarm_msg, 'cron', [key], hour=value['hour'],
-                              minute=value['minute'], id=key, misfire_grace_time=600)
+                              minute=value['minute'], id=key)
         scheduler.start()
 
         print('已开启定时发送提醒功能...')
@@ -39,4 +45,4 @@ class TestJobModel(BaseTestCase):
 
 def send_alarm_msg(key):
     """ 发送定时提醒 """
-    print('\nyang')
+    print('\nArex')

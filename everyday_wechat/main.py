@@ -139,10 +139,16 @@ def init_alarm(alarm_dict):
     scheduler = BackgroundScheduler()
     for key, value in alarm_dict.items():
         if 'days' in value:
-            scheduler.add_job(send_alarm_msg, 'interval', [key], days=value['days'], start_date=value['start_time'],
+            scheduler.add_job(send_alarm_msg, 'interval', [key], days=value['days'], start_date=value['start_date'],
                           id=key)
+        elif 'month' in value:
+            scheduler.add_job(send_alarm_msg, 'cron', [key], month=value['month'], day=value['day'], hour=value['hour'],
+                          minute=value['minute'], id=key)
         elif 'day' in value:
             scheduler.add_job(send_alarm_msg, 'cron', [key], day=value['day'], hour=value['hour'],
+                          minute=value['minute'], id=key)
+        elif 'day_of_week' in value:
+            scheduler.add_job(send_alarm_msg, 'cron', [key], day_of_week=value['day_of_week'], hour=value['hour'],
                           minute=value['minute'], id=key)
         else:
             scheduler.add_job(send_alarm_msg, 'cron', [key], hour=value['hour'],
@@ -160,17 +166,17 @@ def send_alarm_msg(key):
 
     gf = conf.get(key)
     # print(gf)air_quality_city
-    is_tomorrow = gf.get('is_tomorrow', False)
-    calendar_info = get_calendar_info(gf.get('calendar'), is_tomorrow)
-    weather = get_weather_info(gf.get('city_name'), is_tomorrow)
-    horoscope = get_constellation_info(gf.get("horescope"), is_tomorrow)
+    #is_tomorrow = gf.get('is_tomorrow', False)
+    #calendar_info = get_calendar_info(gf.get('calendar'), is_tomorrow)
+    #weather = get_weather_info(gf.get('city_name'), is_tomorrow)
+    #horoscope = get_constellation_info(gf.get("horescope"), is_tomorrow)
     dictum = get_dictum_info(gf.get('dictum_channel'))
-    diff_time = get_diff_time(gf.get('start_date'), gf.get('start_date_msg'))
-    air_quality = get_air_quality(gf.get('air_quality_city'))
+    #diff_time = get_diff_time(gf.get('start_date'), gf.get('start_date_msg'))
+    #air_quality = get_air_quality(gf.get('air_quality_city'))
 
     sweet_words = gf.get('sweet_words')
     send_msg = '\n'.join(
-        x for x in [calendar_info, weather, air_quality, horoscope, dictum, diff_time, sweet_words] if x)
+        x for x in [dictum, sweet_words] if x)
     # print('\n' + send_msg + '\n')
     if not send_msg or not is_online(): return
     uuid_list = gf.get('uuid_list')
